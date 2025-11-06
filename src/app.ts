@@ -10,10 +10,29 @@ import { env } from "./config/env";
 const app = express();
 app.use(helmet());
 
-// Configure CORS based on environment
+// Configure CORS with explicit origin validation
 const allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+
 app.use(cors({ 
-  origin: env.NODE_ENV === 'production' ? allowedOrigins : true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow localhost origins
+    if (env.NODE_ENV === 'development') {
+      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        return callback(null, true);
+      }
+    }
+    
+    // Check against allowed origins list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Reject other origins
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true 
 }));
 
