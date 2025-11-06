@@ -23,20 +23,7 @@ export default [
     },
   },
   {
-    files: ["tests/**/*.ts", "*.config.ts"],
-    languageOptions: {
-      globals: {
-        ...globals.node,
-        ...globals.jest,
-      },
-    },
-    rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unused-vars": "off",
-      "no-console": "off",
-    },
-  },
-  {
-    ignores: ["dist/", "node_modules/", "eslint.config.js"],
+    // Don't lint test files and config files with TypeScript rules
+    ignores: ["dist/", "node_modules/", "eslint.config.js", "tests/**/*", "jest.config.ts"],
   },
 ];
