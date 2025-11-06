@@ -1,4 +1,4 @@
-import { Schema, model, Types } from "mongoose";
+import { Schema, model } from "mongoose";
 const SyncLogSchema = new Schema({
   tenantId: { type: Schema.Types.ObjectId, index: true, required: true },
   scope: { type: String, enum: ["items","inventories","priceNotes","customers","quotations"], required: true },

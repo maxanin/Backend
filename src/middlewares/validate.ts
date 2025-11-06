@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { ZodSchema, ZodTypeAny } from "zod";
+import { ZodSchema } from "zod";
 
 type Parts = { body?: ZodSchema<any>; query?: ZodSchema<any>; params?: ZodSchema<any> };
 

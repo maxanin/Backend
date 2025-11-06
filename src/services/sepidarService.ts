@@ -155,6 +155,10 @@ export default class SepidarService {
 
   /** Users/Login (returns JWT) */
   async login(tenantId: string, integrationId: number, username: string, password: string) {
+    // SECURITY NOTE: MD5 is used here ONLY because it's required by the Sepidar API.
+    // This is a known limitation of the external API and not a security choice.
+    // MD5 is cryptographically broken and should never be used for password hashing
+    // in applications we control.
     const md5 = crypto.createHash("md5").update(password, "utf8").digest("hex"); // طبق سند: PasswordHash=MD5. :contentReference[oaicite:30]{index=30}
     const headers = await this.buildHeaders(tenantId, integrationId);
 

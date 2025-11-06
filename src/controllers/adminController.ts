@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import SepidarService from "../services/sepidarService";
 import SyncService from "../services/syncService";
-import Device from "../models/Device";
 
 const sepidar = new SepidarService();
 const syncService = new SyncService(sepidar);

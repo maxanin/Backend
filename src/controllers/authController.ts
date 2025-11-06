@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import crypto from "crypto";
 import User from "../models/User";
 import SepidarService from "../services/sepidarService";
 import { signAppJwt } from "../utils/jwt";
