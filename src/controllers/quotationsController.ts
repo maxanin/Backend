@@ -1,17 +1,23 @@
 import { Request, Response } from "express";
 import SepidarService from "../services/sepidarService";
 import Quotation from "../models/Quotation";
-import User from "../models/User";
+import SyncService from "../services/syncService";
+import { resolveServiceToken } from "../services/serviceSession";
 
 const sepidar = new SepidarService();
+const syncService = new SyncService(sepidar);
 
 export async function createQuotation(req: Request, res: Response) {
-  const { tenantId, integrationId, userId } = (req as any).auth;
-  const user = await User.findById(userId);
-  if (!user?.lastSepidarToken) return res.status(401).json({ message: "Sepidar token missing" });
+  const { tenantId, integrationId, userId, role, customerId } = (req as any).auth;
+  if (role === "customer") {
+    if (!customerId) return res.status(400).json({ message: "Customer not linked" });
+    req.body.CustomerRef = customerId;
+  }
+  const token = await resolveServiceToken(tenantId, integrationId, userId);
+  if (!token) return res.status(401).json({ message: "Sepidar token missing" });
 
   const body = req.body; // بدنه دقیقاً طبق مدل سپیدار
-  const created = await sepidar.createQuotation(tenantId, integrationId, user.lastSepidarToken, body);
+  const created = await sepidar.createQuotation(tenantId, integrationId, token, body);
 
   // کش محلی
   await Quotation.findOneAndUpdate(
@@ -20,5 +26,9 @@ export async function createQuotation(req: Request, res: Response) {
     { upsert: true, new: true }
   );
 
+  await syncService.syncQuotations(tenantId, integrationId, token);
+
   res.status(201).json(created);
 }
+
+// token resolved via serviceSession

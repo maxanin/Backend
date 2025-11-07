@@ -36,6 +36,7 @@ export interface IInvoice {
     productPackRef?: number;
     productPackQuantity?: number;
   }[];
+  lastSyncAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -77,7 +78,8 @@ const InvoiceSchema = new Schema<IInvoice>({
   discount: Number,
   addition: Number,
   netPrice: Number,
-  invoiceItems: { type: [InvoiceItemSchema], default: [] }
+  invoiceItems: { type: [InvoiceItemSchema], default: [] },
+  lastSyncAt: Date
 }, { timestamps: true });
 
 InvoiceSchema.index({ tenantId: 1, invoiceId: 1 }, { unique: true });

@@ -3,6 +3,8 @@ import Item from "../models/Item";
 import Inventory from "../models/Inventory";
 import PriceNoteItem from "../models/PriceNoteItem";
 import Customer from "../models/Customer";
+import Invoice from "../models/Invoice";
+import Quotation from "../models/Quotation";
 import SyncLog from "../models/SyncLog";
 
 export default class SyncService {
@@ -49,7 +51,7 @@ export default class SyncService {
       }));
       if (ops.length) await Item.bulkWrite(ops);
       await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "ok", details: { count: ops.length } });
-      return { count: ops.length };
+      return { count: ops.length, items };
     } catch (error: any) {
       await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "error", error });
       throw error;
@@ -69,7 +71,7 @@ export default class SyncService {
       }));
       if (ops.length) await Inventory.bulkWrite(ops);
       await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "ok", details: { count: ops.length } });
-      return { count: ops.length };
+      return { count: ops.length, inventories };
     } catch (error: any) {
       await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "error", error });
       throw error;
@@ -104,7 +106,7 @@ export default class SyncService {
       }));
       if (ops.length) await PriceNoteItem.bulkWrite(ops);
       await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "ok", details: { count: ops.length } });
-      return { count: ops.length };
+      return { count: ops.length, rows };
     } catch (error: any) {
       await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "error", error });
       throw error;
@@ -144,7 +146,88 @@ export default class SyncService {
       }));
       if (ops.length) await Customer.bulkWrite(ops);
       await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "ok", details: { count: ops.length } });
-      return { count: ops.length };
+      return { count: ops.length, customers };
+    } catch (error: any) {
+      await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "error", error });
+      throw error;
+    }
+  }
+
+  async syncInvoices(tenantId: string, integrationId: number, token: string) {
+    const log = await SyncLog.create({ tenantId, scope: "invoices", startedAt: new Date() });
+    try {
+      const invoices = await this.sepidar.getInvoices(tenantId, integrationId, token);
+      const ops = invoices.map((inv: any) => ({
+        updateOne: {
+          filter: { tenantId, invoiceId: inv.Id ?? inv.ID ?? inv.InvoiceId },
+          update: {
+            tenantId,
+            invoiceId: inv.Id ?? inv.ID ?? inv.InvoiceId,
+            orderRef: inv.OrderRef,
+            quotationRef: inv.QuotationRef ?? inv.QuatationRef,
+            number: inv.Number,
+            date: inv.Date,
+            customerRef: inv.CustomerRef,
+            currencyRef: inv.CurrencyRef,
+            rate: inv.Rate,
+            saleTypeRef: inv.SaleTypeRef,
+            addressRef: inv.AddressRef,
+            price: inv.Price,
+            tax: inv.Tax,
+            duty: inv.Duty,
+            discount: inv.Discount,
+            addition: inv.Addition,
+            netPrice: inv.NetPrice,
+            invoiceItems: inv.InvoiceItems,
+            updatedAt: new Date(),
+            lastSyncAt: new Date()
+          },
+          upsert: true
+        }
+      }));
+      if (ops.length) await Invoice.bulkWrite(ops);
+      await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "ok", details: { count: ops.length } });
+      return { count: ops.length, invoices };
+    } catch (error: any) {
+      await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "error", error });
+      throw error;
+    }
+  }
+
+  async syncQuotations(tenantId: string, integrationId: number, token: string) {
+    const log = await SyncLog.create({ tenantId, scope: "quotations", startedAt: new Date() });
+    try {
+      const quotations = await this.sepidar.getQuotations(tenantId, integrationId, token);
+      const ops = quotations.map((qt: any) => ({
+        updateOne: {
+          filter: { tenantId, id: qt.Id ?? qt.ID ?? qt.QuotationId ?? qt.id },
+          update: {
+            tenantId,
+            id: qt.Id ?? qt.ID ?? qt.QuotationId ?? qt.id,
+            guid: qt.Guid ?? qt.GUID,
+            number: qt.Number,
+            date: qt.Date,
+            currencyRef: qt.CurrencyRef,
+            customerRef: qt.CustomerRef,
+            addressRef: qt.AddressRef,
+            saleTypeRef: qt.SaleTypeRef,
+            discountOnCustomer: qt.DiscountOnCustomer,
+            price: qt.Price,
+            discount: qt.Discount,
+            tax: qt.Tax,
+            duty: qt.Duty,
+            addition: qt.Addition,
+            netPrice: qt.NetPrice,
+            status: qt.Status,
+            syncedAt: new Date(),
+            updatedAt: new Date()
+          },
+          upsert: true
+        }
+      }));
+      if (ops.length) await Quotation.bulkWrite(ops);
+      await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "ok", details: { count: ops.length } });
+      return { count: ops.length, quotations };
     } catch (error: any) {
       await SyncLog.findByIdAndUpdate(log._id, { finishedAt: new Date(), status: "error", error });
       throw error;

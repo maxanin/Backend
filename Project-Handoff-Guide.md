@@ -1,19 +1,22 @@
-## راه‌اندازی سریع
+# راه‌اندازی سریع
 
-1) پیش‌نیازها: Node 18+، MongoDB محلی
+1. پیش‌نیازها: Node 18+، MongoDB محلی
 
-2) تنظیم محیط:
+1. تنظیم محیط:
 
-```
+```env
 NODE_ENV=development
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/sepidar_pwa
 APP_JWT_SECRET=replace-with-a-32-characters-secret--------------------------------
 SEPIDAR_URL=http://localhost:7373/api
+DEFAULT_GENERATION_VERSION=110
+SEPIDAR_SERVICE_USERNAME=<sapidar-username>
+SEPIDAR_SERVICE_PASSWORD=<sapidar-password>
 LOG_LEVEL=info
 ```
 
-3) اجرا:
+1. اجرا:
 
 - نصب: `npm install`
 - توسعه: `npm run dev`

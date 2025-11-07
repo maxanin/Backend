@@ -7,7 +7,8 @@ export interface IUser {
   passwordHash?: string;         // bcrypt برای لاگین داخلی (در صورت نیاز)
   phoneNumber?: string;
   customerId?: number;           // CustomerID از سپیدار
-  role: "customer" | "admin" | "sales";
+  integrationId?: number;
+  role: "customer" | "admin" | "sales" | "service";
   isActive: boolean;
   devices: { deviceId: string; lastLogin?: Date; fcmToken?: string }[];
   maxDevices: number;            // پیش‌فرض: 2
@@ -19,11 +20,12 @@ export interface IUser {
 
 const UserSchema = new Schema<IUser>({
   tenantId: { type: Schema.Types.ObjectId, required: true, index: true },
-  username: { type: String, required: true, unique: true },
+  username: { type: String, required: true },
   passwordHash: String,
   phoneNumber: String,
   customerId: Number,
-  role: { type: String, enum: ["customer", "admin", "sales"], default: "customer" },
+  integrationId: Number,
+  role: { type: String, enum: ["customer", "admin", "sales", "service"], default: "customer" },
   isActive: { type: Boolean, default: true },
   devices: [{ deviceId: String, lastLogin: Date, fcmToken: String }],
   maxDevices: { type: Number, default: 2 },

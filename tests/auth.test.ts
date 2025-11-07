@@ -13,8 +13,8 @@ jest.mock('../src/models/User', () => ({
   __esModule: true,
   default: {
     findOne: jest.fn().mockResolvedValue(null),
-    create: jest.fn().mockResolvedValue({ _id: 'u1', role: 'customer', save: jest.fn() }),
-    findById: jest.fn().mockResolvedValue({ _id: 'u1', role: 'customer', save: jest.fn() })
+    create: jest.fn().mockResolvedValue({ _id: 'u1', role: 'admin', integrationId: 1234, save: jest.fn() }),
+    findById: jest.fn().mockResolvedValue({ _id: 'u1', role: 'admin', integrationId: 1234, save: jest.fn() })
   }
 }));
 
