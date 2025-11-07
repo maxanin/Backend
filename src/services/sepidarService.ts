@@ -3,6 +3,7 @@ import axios, { AxiosInstance } from "axios";
 import crypto from "crypto";
 import { parseStringPromise } from "xml2js";
 import Device from "../models/Device";
+import { env } from "../config/env";
 
 type SepidarHeaders = {
   GenerationVersion: string;
@@ -23,24 +24,29 @@ export default class SepidarService {
 
   /** Build AES key from serial by concatenating serial twice (per doc) */
   private buildAesKeyFromSerial(serial: string): Buffer {
-    // سریال را دوبار پشت‌سر‌هم می‌چسبانیم؛ سپس به طول 32 بایت (AES-256-CBC) پد یا برش می‌دهیم
+    // طبق نمونه کد پایتون: registration_code * 2 → AES-128 (16 بایت)
     const doubled = (serial + serial);
-    const key = Buffer.alloc(32, 0);
-    key.write(doubled.slice(0, 32), "utf8");
-    return key;
+    const keyBytes = Buffer.from(doubled.slice(0, 16), "utf8");
+    // اگر کمتر از 16 بایت بود، pad می‌کنیم
+    if (keyBytes.length < 16) {
+      const padded = Buffer.alloc(16, 0);
+      keyBytes.copy(padded);
+      return padded;
+    }
+    return keyBytes;
   }
 
-  /** AES-CBC encrypt Base64 out */
+  /** AES-CBC encrypt Base64 out - طبق نمونه کد: AES-128 */
   private aesCbcEncryptBase64(plain: Buffer, key: Buffer, iv: Buffer): string {
-    const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
+    const cipher = crypto.createCipheriv("aes-128-cbc", key, iv);
     const enc = Buffer.concat([cipher.update(plain), cipher.final()]);
     return enc.toString("base64");
   }
 
-  /** AES-CBC decrypt Base64 in -> Buffer */
+  /** AES-CBC decrypt Base64 in -> Buffer - طبق نمونه کد: AES-128 */
   private aesCbcDecryptBase64(b64: string, key: Buffer, iv: Buffer): Buffer {
     const data = Buffer.from(b64, "base64");
-    const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+    const decipher = crypto.createDecipheriv("aes-128-cbc", key, iv);
     const dec = Buffer.concat([decipher.update(data), decipher.final()]);
     return dec;
   }
@@ -51,13 +57,37 @@ export default class SepidarService {
     const modB64 = parsed.RSAKeyValue.Modulus[0];
     const expB64 = parsed.RSAKeyValue.Exponent[0];
     const modulus = Buffer.from(modB64, "base64");
-    const exponent = Buffer.from(expB64, "base64");
+    // طبق نمونه کد پایتون: exponent به integer با little-endian خوانده می‌شود
+    const expBytes = Buffer.from(expB64, "base64");
+    const expBigInt = this.littleEndianBufferToBigInt(expBytes);
+    // تبدیل به Buffer big-endian برای استفاده در DER builder
+    const expBuffer = this.bigIntToBuffer(expBigInt);
+    const exponent = expBuffer;
 
     // Build ASN.1 SubjectPublicKeyInfo
     // Minimal DER builder:
     const der = this.buildRsaSpkiDer(modulus, exponent);
     const pem = `-----BEGIN PUBLIC KEY-----\n${der.toString("base64").match(/.{1,64}/g)!.join("\n")}\n-----END PUBLIC KEY-----\n`;
     return pem;
+  }
+
+  /** Convert little-endian Buffer to BigInt */
+  private littleEndianBufferToBigInt(buf: Buffer): bigint {
+    let result = 0n;
+    for (let i = buf.length - 1; i >= 0; i -= 1) {
+      result = (result << 8n) | BigInt(buf[i]);
+    }
+    return result;
+  }
+
+  /** Convert BigInt to Buffer (big-endian) */
+  private bigIntToBuffer(n: bigint): Buffer {
+    if (n === 0n) return Buffer.from([0]);
+    let hex = n.toString(16);
+    if (hex.length % 2 !== 0) hex = `0${hex}`;
+    let buf = Buffer.from(hex, "hex");
+    if (buf[0] & 0x80) buf = Buffer.concat([Buffer.from([0x00]), buf]);
+    return buf;
   }
 
   /** Build DER for RSA SPKI (very compact) */
@@ -91,6 +121,13 @@ export default class SepidarService {
     return Buffer.concat([Buffer.from([0x80 | bytes.length]), Buffer.from(bytes)]).readUIntBE(0, 1 + bytes.length); // not used directly
   }
 
+  /** Convert UUID string to 16 bytes (like Python uuid.bytes) */
+  private uuidStringToBytes(uuid: string): Buffer {
+    // Remove dashes and convert hex to bytes
+    const hex = uuid.replace(/-/g, "");
+    return Buffer.from(hex, "hex");
+  }
+
   /** Register device: send Cypher/IV built from client serial rules; get RSA public key back */
   async registerDevice(tenantId: string, serial: string, integrationIdFromUi?: number) {
     // IntegrationID: 4 رقم سمت چپ سریال طبق داک. :contentReference[oaicite:25]{index=25}
@@ -121,6 +158,7 @@ export default class SepidarService {
         cypherFromServer: serverCypher,
         ivFromServer: serverIv,
         isRegistered: true,
+        generationVersion: env.DEFAULT_GENERATION_VERSION,
         lastRegisteredAt: new Date()
       },
       { upsert: true, new: true }
@@ -134,18 +172,20 @@ export default class SepidarService {
     const device = await Device.findOne({ tenantId, integrationId, isRegistered: true });
     if (!device) throw new Error("Device not registered");
 
-    const arbitrary = crypto.randomUUID(); // باید در هر درخواست یکتا باشد. :contentReference[oaicite:28]{index=28}
+    // طبق نمونه کد پایتون: uuid.__str__() برای ArbitraryCode و uuid.bytes برای encryption
+    const uuidStr = crypto.randomUUID();
+    const uuidBytes = this.uuidStringToBytes(uuidStr);
     const publicPem = await this.rsaXmlToPemPublicKey(device.publicKeyXml);
 
     const encArbitrary = crypto.publicEncrypt(
       { key: publicPem, padding: crypto.constants.RSA_PKCS1_PADDING }, // PKCS#1 v1.5. :contentReference[oaicite:29]{index=29}
-      Buffer.from(arbitrary, "utf8")
+      uuidBytes
     ).toString("base64");
 
     const headers: SepidarHeaders = {
-      GenerationVersion: device.generationVersion || "101",
+      GenerationVersion: device.generationVersion || env.DEFAULT_GENERATION_VERSION,
       IntegrationID: integrationId,
-      ArbitraryCode: arbitrary,
+      ArbitraryCode: uuidStr,
       EncArbitraryCode: encArbitrary
     };
 
@@ -158,7 +198,7 @@ export default class SepidarService {
     const md5 = crypto.createHash("md5").update(password, "utf8").digest("hex"); // طبق سند: PasswordHash=MD5. :contentReference[oaicite:30]{index=30}
     const headers = await this.buildHeaders(tenantId, integrationId);
 
-    const { data } = await this.http.post("/users/login", {
+    const { data } = await this.http.post("/Users/Login", {
       UserName: username,
       PasswordHash: md5
     }, { headers });

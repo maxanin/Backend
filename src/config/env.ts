@@ -7,7 +7,7 @@ const schema = z.object({
   MONGODB_URI: z.string().min(1),
   APP_JWT_SECRET: z.string().min(32),
   SEPIDAR_URL: z.string().url(),
-  DEFAULT_GENERATION_VERSION: z.string().default("101")
+  DEFAULT_GENERATION_VERSION: z.string().default("110")
 });
 
 export const env = schema.parse(process.env);
