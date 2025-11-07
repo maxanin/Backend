@@ -46,4 +46,17 @@ export async function triggerFullSync(req: Request, res: Response) {
   });
 }
 
+export async function listActivities(req: Request, res: Response) {
+  const { tenantId } = (req as any).auth;
+  const { page = "1", limit = "50" } = req.query as any;
+  const p = Math.max(parseInt(String(page)), 1);
+  const l = Math.min(Math.max(parseInt(String(limit)), 1), 200);
+  const ActivityLog = (await import("../models/ActivityLog")).default;
+  const [items, total] = await Promise.all([
+    ActivityLog.find({ tenantId }).sort({ timestamp: -1 }).skip((p - 1) * l).limit(l).lean(),
+    ActivityLog.countDocuments({ tenantId })
+  ]);
+  res.json({ items, page: p, limit: l, total });
+}
+
 // resolve handled by serviceSession

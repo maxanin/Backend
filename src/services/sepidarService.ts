@@ -308,7 +308,7 @@ export default class SepidarService {
   }
   async createInvoiceBasedOnQuotation(tenantId: string, integrationId: number, token: string, quotationId: number) {
     const headers = await this.buildHeaders(tenantId, integrationId, token);
-    const { data } = await this.http.post("/Invoices/BasedOnQuotation", { QuatationID: quotationId }, { headers }); // تبدیل از پیش‌فاکتور. :contentReference[oaicite:49]{index=49}
+    const { data } = await this.http.post("/Invoices/BasedOnQuotation", { QuotationID: quotationId }, { headers }); // تبدیل از پیش‌فاکتور.
     return data;
   }
 }

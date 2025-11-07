@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { auth } from "../middlewares/auth";
 import { deviceLimit } from "../middlewares/deviceLimit";
-import { createQuotation } from "../controllers/quotationsController";
+import { createQuotation, listQuotations, getQuotationById, getMyQuotations, shareQuotationLink } from "../controllers/quotationsController";
 const r = Router();
+r.get("/", auth, deviceLimit, listQuotations);
+r.get("/me", auth, deviceLimit, getMyQuotations);
+r.get("/:id", auth, deviceLimit, getQuotationById);
+r.get("/:id/share", auth, deviceLimit, shareQuotationLink);
 r.post("/", auth, deviceLimit, createQuotation);
 export default r;

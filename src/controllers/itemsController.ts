@@ -13,6 +13,7 @@ export async function listItems(req: Request, res: Response) {
   // ابتدا از کش محلی
   const filter: any = { tenantId };
   if (q) filter.$or = [{ code: new RegExp(q, "i") }, { title: new RegExp(q, "i") }];
+  if (groupId) filter.saleGroupRef = Number(groupId);
 
   const p = Math.max(parseInt(page), 1);
   const l = Math.min(Math.max(parseInt(limit), 1), 100);
@@ -40,4 +41,21 @@ export async function refreshItemsFromSepidar(req: Request, res: Response) {
   ]);
 
   res.json({ ok: true, items: itemsRes.count, inventories: invRes.count, priceNotes: priceRes.count });
+}
+
+export async function updateItemMetadata(req: Request, res: Response) {
+  const { tenantId, role } = (req as any).auth;
+  if (role !== "admin" && role !== "service") return res.status(403).json({ message: "Forbidden" });
+  const itemId = parseInt(req.params.itemId, 10);
+  const { title, description, thumbnailBase64 } = req.body as any;
+  const update: any = {};
+  if (title !== undefined) update.title = String(title);
+  if (description !== undefined) update.propertyValues = [{ propertyRef: 0, value: String(description) }];
+  if (thumbnailBase64 !== undefined) update.thumbnailBase64 = String(thumbnailBase64);
+  const updated = await (await import("../models/Item")).default.findOneAndUpdate(
+    { tenantId, itemId },
+    update,
+    { new: true }
+  ).lean();
+  res.json({ ok: true, item: updated });
 }

@@ -3,6 +3,7 @@ import Invoice from "../models/Invoice";
 import SepidarService from "../services/sepidarService";
 import SyncService from "../services/syncService";
 import { resolveServiceToken } from "../services/serviceSession";
+import { notify } from "../services/notificationService";
 
 const sepidar = new SepidarService();
 const syncService = new SyncService(sepidar);
@@ -35,8 +36,21 @@ export async function createInvoice(req: Request, res: Response) {
   }
   const token = await resolveServiceToken(tenantId, integrationId, userId);
   if (!token) return res.status(401).json({ message: "Sepidar token missing" });
+  // پشتیبانی از توضیحات مشتری در بدنه
+  if (req.body && req.body.Description == null && req.body.description != null) {
+    req.body.Description = String(req.body.description);
+  }
   const created = await sepidar.createInvoice(tenantId, integrationId, token, req.body);
   await upsertInvoice(tenantId, created);
+  await notify("console", {
+    type: "invoice_created",
+    tenantId,
+    customerRef: created.CustomerRef ?? created.customerRef,
+    number: created.Number ?? created.number,
+    date: created.Date ?? created.date,
+    amount: created.NetPrice ?? created.netPrice,
+    description: req.body.Description
+  });
   res.status(201).json(created);
 }
 
