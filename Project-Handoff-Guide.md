@@ -4,6 +4,10 @@
 
 1. تنظیم محیط:
 
+فایل `.env` را در دایرکتوری `backend` ایجاد کنید. برای جزئیات کامل به فایل [ENV.md](./ENV.md) مراجعه کنید.
+
+مثال حداقلی:
+
 ```env
 NODE_ENV=development
 PORT=3000
@@ -14,6 +18,7 @@ DEFAULT_GENERATION_VERSION=110
 SEPIDAR_SERVICE_USERNAME=<sapidar-username>
 SEPIDAR_SERVICE_PASSWORD=<sapidar-password>
 LOG_LEVEL=info
+NOTIFY_WEBHOOK_URL=
 ```
 
 1. اجرا:

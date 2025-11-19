@@ -18,10 +18,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Env files
-.env
-.env.*
-!.env.example
 
 # OS/Editor junk
 .DS_Store
